@@ -1,11 +1,14 @@
 {
   "programming": {
-    "week1": {
-      "name=125": "# Example Python Solution for Week 1\ndef solution():\n    pass\n"
-    },
+    "week1": {},
     "week2": {},
     "week3": {},
-    "week4": {},
+    "week4": {
+      "progassignmentId=676": "a = [int(x) for x in input().split()]\nif len(a) == 0:\n    print(0, end='')\nelse:\n    print(max(a) - min(a), end='')",
+      "progassignmentId=677": "a = int(input())\nif a < 2:\n    print(False, end='')\nelse:\n    is_prime = True\n    for i in range(2, int(a ** 0.5) + 1):\n        if a % i == 0:\n            is_prime = False\n            break\n    print(is_prime, end='')",
+      "progassignmentId=678": "a = [int(x) for x in input().split()]\nif len(a) == 0:\n    print(0, end='')\nelse:\n    print(max(a) - min(a), end='')",
+      "progassignmentId=679": "items = input().split()\nprint(len(items) != len(set(items)), end='')"
+    },
     "week5": {
       "progassignmentId=683": "arr = [int(x) for x in input().split()]\nfreq = {}\nfor num in arr:\n    freq[num] = freq.get(num, 0) + 1\nmax_freq = max(freq.values())\ncandidates = [num for num, count in freq.items() if count == max_freq]\nprint(min(candidates), end='')",
       "progassignmentId=684": "arr = [int(x) for x in input().split()]\nseen = set()\nadded = set()\nresult = []\nfor num in arr:\n    if num in seen:\n        if num not in added:\n            result.append(num)\n            added.add(num)\n    else:\n        seen.add(num)\nif not result:\n    print(-1, end='')\nelse:\n    print(*result, end='')",
@@ -20,6 +23,40 @@
     "week12": {}
   },
   "mcq": {
+    "assessmentId=675": {
+      "Q1": "To ensure that February is assigned the correct number of days.",
+      "Q2": "datetime",
+      "Q3": "To compare birthdays without considering the birth year.",
+      "Q4": "To make duplicate values easier to identify.",
+      "Q5": "The random birthday generation creates a different set of birthdays in every run.",
+      "Q6": "To generate two cards with exactly one common symbol.",
+      "Q7": [
+        "Removing the common symbol from the symbol pool after placing it.",
+        "Removing every newly assigned symbol from the available symbol pool.",
+        "Randomly choosing only one symbol to be shared between both cards."
+      ],
+      "Q8": "To select a symbol randomly from the available symbol list.",
+      "Q9": "A five-element list has valid indices only from 0 to 4.",
+      "Q10": "It asks the player to identify the common symbol.",
+      "Q11": "Nested list comprehension",
+      "Q12": "The number 1 will always be placed in the middle row of the last column.",
+      "Q13": "To allow the program to identify cells that have not yet been assigned a value.",
+      "Q14": "It places only the first number and does not determine positions for the remaining numbers.",
+      "Q15": [
+        "It allocates memory for an n × n matrix before placing any numbers.",
+        "It determines the initial position of the first number using the Magic Square algorithm.",
+        "It uses nested iteration while creating the matrix."
+      ],
+      "Q16": "create_question()",
+      "Q17": "The current masked title remains unchanged, and a message is displayed.",
+      "Q18": "To reveal only the newly guessed letters while preserving previously revealed letters.",
+      "Q19": "All letters in the movie title have been revealed.",
+      "Q20": [
+        "random.choice() is used to select one movie title from the list.",
+        "The unlock() function may reveal multiple occurrences of the guessed letter in a single attempt.",
+        "The player's input is converted to uppercase before it is checked against the movie title."
+      ]
+    },
     "assessmentId=682": {
       "Q1": "5",
       "Q2": "It executes only when a category is not present in borrow_count.",

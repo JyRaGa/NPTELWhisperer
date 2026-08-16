@@ -9,6 +9,12 @@
   "host_permissions": [
     "https://raw.githubusercontent.com/*"
   ],
+  "web_accessible_resources": [
+    {
+      "resources": ["solutions.json"],
+      "matches": ["*://onlinecourses.nptel.ac.in/*"]
+    }
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_title": "NPTEL Whisperer"

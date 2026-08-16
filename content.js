@@ -6,39 +6,44 @@ console.log("[NPTEL Whisperer] Script initialized. Current URL:", window.locatio
 const REMOTE_SOLUTIONS_URL = "https://raw.githubusercontent.com/JyRaGa/NPTELWhisperer/refs/heads/main/solutions.json";
 const REMOTE_SOLUTIONS_URL_ALT = "https://raw.githubusercontent.com/JyRaGa/NPTELWhisperer/refs/heads/main/solutions.js";
 
-// Fetch the latest solutions JSON from remote GitHub repo with local storage fallback
+// Fetch the latest solutions JSON with priority: Bundled local extension solutions.json -> Remote GitHub -> Local cache
 async function fetchLatestSolutions() {
-    console.log("[NPTEL Whisperer] Checking for latest solutions from GitHub repository...");
+    let localBundledData = null;
+    try {
+        const localRes = await fetch(chrome.runtime.getURL('solutions.json'));
+        if (localRes.ok) {
+            localBundledData = await localRes.json();
+            console.log("[NPTEL Whisperer] Successfully loaded local extension solutions.json.");
+        }
+    } catch (e) {
+        console.warn("[NPTEL Whisperer] Could not read bundled solutions.json:", e);
+    }
+
     try {
         const response = await fetch(REMOTE_SOLUTIONS_URL, { cache: 'no-cache' });
         if (response.ok) {
-            const data = await response.json();
-            if (data && (data.programming || data.mcq)) {
-                await chrome.storage.local.set({ latestNptelData: data });
-                console.log("[NPTEL Whisperer] Successfully fetched and cached latest solutions from GitHub.");
-                return data;
-            }
-        } else {
-            console.warn(`[NPTEL Whisperer] Primary JSON endpoint returned status ${response.status}. Attempting fallback endpoint...`);
-            const altResponse = await fetch(REMOTE_SOLUTIONS_URL_ALT, { cache: 'no-cache' });
-            if (altResponse.ok) {
-                const text = await altResponse.text();
-                try {
-                    const data = JSON.parse(text);
-                    await chrome.storage.local.set({ latestNptelData: data });
-                    console.log("[NPTEL Whisperer] Successfully fetched and cached latest solutions from alternative endpoint.");
-                    return data;
-                } catch (e) {
-                    console.warn("[NPTEL Whisperer] Could not parse alternative response as JSON.");
-                }
+            const remoteData = await response.json();
+            if (remoteData && (remoteData.programming || remoteData.mcq)) {
+                // Merge: local bundled takes priority over remote so new local edits are immediate
+                const merged = {
+                    programming: { ...(remoteData.programming || {}), ...(localBundledData?.programming || {}) },
+                    mcq: { ...(remoteData.mcq || {}), ...(localBundledData?.mcq || {}) }
+                };
+                await chrome.storage.local.set({ latestNptelData: merged });
+                console.log("[NPTEL Whisperer] Successfully fetched and merged solutions with remote.");
+                return merged;
             }
         }
     } catch (err) {
-        console.warn("[NPTEL Whisperer] Remote fetch failed or user is offline:", err.message);
+        console.warn("[NPTEL Whisperer] Remote fetch failed or offline:", err.message);
     }
 
-    // Fallback to locally cached data
-    console.log("[NPTEL Whisperer] Attempting to load solutions from local cache...");
+    // Fallback to locally bundled file or chrome.storage.local cache
+    if (localBundledData) {
+        await chrome.storage.local.set({ latestNptelData: localBundledData });
+        return localBundledData;
+    }
+
     try {
         const cached = await new Promise((resolve) => {
             chrome.storage.local.get(['latestNptelData'], resolve);
@@ -51,53 +56,7 @@ async function fetchLatestSolutions() {
         console.warn("[NPTEL Whisperer] Error retrieving cached solutions:", err);
     }
 
-    console.warn("[NPTEL Whisperer] No remote or cached solutions available.");
-    return null;
-}
-
-// Function to find the correct Python code based on the current page URL
-function getProgrammingSolutionForCurrentPage(nptelData) {
-    const currentURL = window.location.href;
-    const programming = nptelData?.programming;
-
-    if (!programming) {
-        return null;
-    }
-
-    // Loop through weeks (week1..week12) and assignment URL fragments
-    for (const week in programming) {
-        if (Object.prototype.hasOwnProperty.call(programming, week)) {
-            const weekSolutions = programming[week];
-            for (const urlFragment in weekSolutions) {
-                if (Object.prototype.hasOwnProperty.call(weekSolutions, urlFragment)) {
-                    if (urlFragment && currentURL.includes(urlFragment)) {
-                        console.log(`[NPTEL Whisperer] Matched programming assignment URL fragment: "${urlFragment}" (in ${week})`);
-                        return weekSolutions[urlFragment];
-                    }
-                }
-            }
-        }
-    }
-    return null;
-}
-
-// Function to find the correct MCQ/MSQ answers based on the current page URL
-function getMCQSolutionForCurrentPage(nptelData) {
-    const currentURL = window.location.href;
-    const mcqSolutions = nptelData?.mcq;
-
-    if (!mcqSolutions) {
-        return null;
-    }
-
-    for (const urlFragment in mcqSolutions) {
-        if (Object.prototype.hasOwnProperty.call(mcqSolutions, urlFragment)) {
-            if (urlFragment && currentURL.includes(urlFragment)) {
-                console.log(`[NPTEL Whisperer] Matched MCQ assessment URL fragment: "${urlFragment}"`);
-                return mcqSolutions[urlFragment];
-            }
-        }
-    }
+    console.warn("[NPTEL Whisperer] No solutions data available.");
     return null;
 }
 
@@ -112,6 +71,209 @@ function cleanText(str) {
         .replace(/^(\([a-z0-9]\)|[a-z0-9][\.\)\:\-])\s*/i, '') // strip prefixes like (a), A., 1), etc.
         .replace(/[,\s]+/g, ' ')                      // normalize spaces & commas
         .trim();
+}
+
+// Extract page context text (title, breadcrumbs, headers, active navigation)
+function getPageContextText() {
+    const selectors = [
+        'h1', 'h2', 'h3', 'h4',
+        '.breadcrumb', '.unit-title', '.lesson-title', '.assessment-title',
+        '.active', '.selected', '.gcb-nav-active', '.nav-item.active', '[aria-current="page"]',
+        '.assignment-title', '.programming-title', '.qt-title', '.gcb-lesson-title',
+        '#course-nav', '.navigation-item', '.sidebar'
+    ];
+    const elements = Array.from(document.querySelectorAll(selectors.join(', ')));
+    const texts = [document.title || ''];
+    elements.forEach(el => {
+        const t = (el.innerText || el.textContent || '').trim();
+        if (t && t.length < 300) {
+            texts.push(t);
+        }
+    });
+    return texts.join(' ').toLowerCase();
+}
+
+// Detect week number from URL and page context
+function detectWeekNumber() {
+    const url = window.location.href.toLowerCase();
+    const context = getPageContextText();
+
+    // Check URL (e.g. week4, week-4, unit=4, unit=28)
+    const urlWeekMatch = url.match(/week[-_]?0?(\d+)/i) || url.match(/[?&]unit=0?(\d+)/i);
+    if (urlWeekMatch) {
+        const num = parseInt(urlWeekMatch[1], 10);
+        if (num >= 1 && num <= 12) return num;
+    }
+
+    // Check context (e.g. "Week 4", "Assignment 4", "Unit 4")
+    const contextMatch = context.match(/week\s*0?(\d+)/i) || 
+                         context.match(/assignment\s*0?(\d+)/i) || 
+                         context.match(/unit\s*0?(\d+)/i);
+    if (contextMatch) {
+        const num = parseInt(contextMatch[1], 10);
+        if (num >= 1 && num <= 12) return num;
+    }
+
+    return null;
+}
+
+// Function to find the correct Python code based on the current page URL & DOM heuristics
+function getProgrammingSolutionForCurrentPage(nptelData) {
+    const currentURL = window.location.href;
+    const programming = nptelData?.programming;
+
+    if (!programming) {
+        return null;
+    }
+
+    // 1. Direct URL fragment match
+    for (const week in programming) {
+        if (Object.prototype.hasOwnProperty.call(programming, week)) {
+            const weekSolutions = programming[week];
+            for (const urlFragment in weekSolutions) {
+                if (Object.prototype.hasOwnProperty.call(weekSolutions, urlFragment)) {
+                    if (urlFragment && currentURL.includes(urlFragment)) {
+                        console.log(`[NPTEL Whisperer] Matched programming assignment URL fragment: "${urlFragment}" (in ${week})`);
+                        return weekSolutions[urlFragment];
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Smart Fallback: Match based on Week + Problem Number / Keywords in DOM
+    const isExplicitAssessmentPage = currentURL.includes('assessmentId') || currentURL.includes('assessment=');
+    const hasCodeEditor = Boolean(document.querySelector('textarea.inputarea, .ace_editor, .monaco-editor, #editor, textarea'));
+    const hasQuestions = document.querySelectorAll('input[type="radio"], input[type="checkbox"], .gcb-question').length >= 3;
+
+    if (isExplicitAssessmentPage || (hasQuestions && !hasCodeEditor)) {
+        return null;
+    }
+
+    const weekNum = detectWeekNumber();
+    if (weekNum) {
+        const weekKey = `week${weekNum}`;
+        const weekSolutions = programming[weekKey];
+        if (weekSolutions) {
+            const solutionKeys = Object.keys(weekSolutions);
+            if (solutionKeys.length > 0) {
+                const combinedContext = (window.location.href + ' ' + getPageContextText()).toLowerCase();
+
+                // Problem 1 heuristics
+                if (combinedContext.includes('assignment 1') || combinedContext.includes('problem 1') || 
+                    combinedContext.includes('question 1') || combinedContext.includes('prog 1') || 
+                    combinedContext.includes('temperature') || combinedContext.includes('frequency') ||
+                    combinedContext.includes('progassignmentid=1') || combinedContext.includes('name=1')) {
+                    console.log(`[NPTEL Whisperer] Smart Fallback matched ${weekKey} Problem 1`);
+                    return weekSolutions[solutionKeys[0]];
+                }
+
+                // Problem 2 heuristics
+                if (combinedContext.includes('assignment 2') || combinedContext.includes('problem 2') || 
+                    combinedContext.includes('question 2') || combinedContext.includes('prog 2') || 
+                    combinedContext.includes('prime') || combinedContext.includes('first duplicate') ||
+                    combinedContext.includes('progassignmentid=2') || combinedContext.includes('name=2')) {
+                    console.log(`[NPTEL Whisperer] Smart Fallback matched ${weekKey} Problem 2`);
+                    return weekSolutions[solutionKeys[1] || solutionKeys[0]];
+                }
+
+                // Problem 3 heuristics
+                if (combinedContext.includes('assignment 3') || combinedContext.includes('problem 3') || 
+                    combinedContext.includes('question 3') || combinedContext.includes('prog 3') || 
+                    combinedContext.includes('product id') || combinedContext.includes('exactly twice') ||
+                    combinedContext.includes('progassignmentid=3') || combinedContext.includes('name=3')) {
+                    console.log(`[NPTEL Whisperer] Smart Fallback matched ${weekKey} Problem 3`);
+                    return weekSolutions[solutionKeys[2] || solutionKeys[0]];
+                }
+
+                // Single solution fallback for that week
+                if (solutionKeys.length === 1) {
+                    console.log(`[NPTEL Whisperer] Smart Fallback matched ${weekKey} single solution`);
+                    return weekSolutions[solutionKeys[0]];
+                }
+            }
+        }
+    }
+
+    return null;
+}
+
+// Function to find the correct MCQ/MSQ answers based on current page URL & DOM heuristics
+function getMCQSolutionForCurrentPage(nptelData) {
+    const currentURL = window.location.href;
+    const mcqSolutions = nptelData?.mcq;
+
+    if (!mcqSolutions) {
+        return null;
+    }
+
+    // 1. Direct URL fragment match
+    for (const urlFragment in mcqSolutions) {
+        if (Object.prototype.hasOwnProperty.call(mcqSolutions, urlFragment)) {
+            if (urlFragment && currentURL.includes(urlFragment)) {
+                console.log(`[NPTEL Whisperer] Matched MCQ assessment URL fragment: "${urlFragment}"`);
+                return mcqSolutions[urlFragment];
+            }
+        }
+    }
+
+    // 2. Smart Fallback via Week Detection
+    const weekNum = detectWeekNumber();
+    if (weekNum) {
+        for (const key in mcqSolutions) {
+            if (key.toLowerCase().includes(`week${weekNum}`) || 
+                key.toLowerCase().includes(`week_${weekNum}`) || 
+                key.toLowerCase().includes(`assessment_${weekNum}`)) {
+                console.log(`[NPTEL Whisperer] Smart Fallback matched MCQ week key: "${key}"`);
+                return mcqSolutions[key];
+            }
+        }
+        if (weekNum === 4 && (mcqSolutions['assessmentId=675'] || mcqSolutions['assessmentId=678'])) {
+            console.log(`[NPTEL Whisperer] Smart Fallback matched Week 4 MCQ`);
+            return mcqSolutions['assessmentId=675'] || mcqSolutions['assessmentId=678'];
+        }
+        if (weekNum === 5 && mcqSolutions['assessmentId=682']) {
+            console.log(`[NPTEL Whisperer] Smart Fallback matched Week 5 MCQ assessmentId=682`);
+            return mcqSolutions['assessmentId=682'];
+        }
+    }
+
+    // 3. Question Content Fingerprint Matching
+    const choiceWrappers = Array.from(document.querySelectorAll('label, .gcb-mcq-choice, .qt-choice, .form-check, li, [class*="choice"], [class*="option"]'));
+    if (choiceWrappers.length >= 3) {
+        const visibleChoiceTexts = choiceWrappers.map(w => cleanText(w.innerText || w.textContent || '')).filter(Boolean);
+
+        let bestKey = null;
+        let highestScore = 0;
+
+        for (const key in mcqSolutions) {
+            const dataset = mcqSolutions[key];
+            let matchScore = 0;
+
+            for (const q in dataset) {
+                const ans = dataset[q];
+                const answers = Array.isArray(ans) ? ans : [ans];
+                for (const target of answers) {
+                    const cleanedTarget = cleanText(target);
+                    if (cleanedTarget && visibleChoiceTexts.some(c => c === cleanedTarget || (cleanedTarget.length > 8 && c.includes(cleanedTarget)))) {
+                        matchScore++;
+                    }
+                }
+            }
+
+            if (matchScore > highestScore) {
+                highestScore = matchScore;
+                bestKey = key;
+            }
+        }
+
+        if (highestScore >= 2 && bestKey) {
+            console.log(`[NPTEL Whisperer] Smart Fallback content fingerprint matched MCQ set: "${bestKey}" (confidence score: ${highestScore})`);
+            return mcqSolutions[bestKey];
+        }
+    }
+
+    return null;
 }
 
 // Match choice text with target answer text
@@ -573,24 +735,35 @@ async function runInjector() {
             return;
         }
 
-        // Check for programming assignment match
-        const pythonCode = getProgrammingSolutionForCurrentPage(nptelData);
-        // Check for MCQ assessment match
-        const mcqData = getMCQSolutionForCurrentPage(nptelData);
+        const attemptResolveAndInject = () => {
+            const currentUrlLower = window.location.href.toLowerCase();
+            const isAssessmentUrl = currentUrlLower.includes('assessmentid') || currentUrlLower.includes('assessment=');
+            const isProgrammingUrl = currentUrlLower.includes('progassignmentid') || currentUrlLower.includes('progassignment');
 
-        if (pythonCode) {
-            console.log("[NPTEL Whisperer] Mode: Programming Assignment detected.");
-            activeInjectionTimeout = setTimeout(() => {
-                injectProgrammingSolution(pythonCode, autoSubmitEnabled);
-            }, 2500);
-        } else if (mcqData) {
-            console.log("[NPTEL Whisperer] Mode: MCQ/MSQ Assessment detected.");
-            activeInjectionTimeout = setTimeout(() => {
+            // 1. Direct MCQ resolution
+            const mcqData = getMCQSolutionForCurrentPage(nptelData);
+            // 2. Direct Programming resolution
+            const pythonCode = getProgrammingSolutionForCurrentPage(nptelData);
+
+            if (isAssessmentUrl && mcqData) {
+                console.log("[NPTEL Whisperer] Mode: MCQ/MSQ Assessment detected.");
                 injectMCQSolutions(mcqData, autoSubmitEnabled);
-            }, 2500);
-        } else {
-            console.log("[NPTEL Whisperer] No programming or MCQ solution mapped for this URL:", currentURL);
-        }
+            } else if (isProgrammingUrl && pythonCode) {
+                console.log("[NPTEL Whisperer] Mode: Programming Assignment detected.");
+                injectProgrammingSolution(pythonCode, autoSubmitEnabled);
+            } else if (mcqData) {
+                console.log("[NPTEL Whisperer] Mode: MCQ/MSQ Assessment detected.");
+                injectMCQSolutions(mcqData, autoSubmitEnabled);
+            } else if (pythonCode) {
+                console.log("[NPTEL Whisperer] Mode: Programming Assignment detected.");
+                injectProgrammingSolution(pythonCode, autoSubmitEnabled);
+            } else {
+                console.log("[NPTEL Whisperer] No programming or MCQ solution mapped for this URL/page:", currentURL);
+            }
+        };
+
+        // Allow SPA DOM 2000ms to mount and render before detecting and injecting
+        activeInjectionTimeout = setTimeout(attemptResolveAndInject, 2000);
     });
 }
 
