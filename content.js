@@ -3,20 +3,71 @@
 console.info("[NPTEL Whisperer] Note: Any 404 or MIME type errors you see below are native NPTEL website errors failing to load Ace editor themes. The extension will force-inject regardless.");
 console.log("[NPTEL Whisperer] Script initialized. Current URL:", window.location.href);
 
-// Function to find the correct Python code based on the current page URL
-function getProgrammingSolutionForCurrentPage() {
-    const currentURL = window.location.href;
-    const solutions = window.nptelSolutions || (typeof nptelSolutions !== 'undefined' ? nptelSolutions : null);
+const REMOTE_SOLUTIONS_URL = "https://raw.githubusercontent.com/JyRaGa/NPTELWhisperer/refs/heads/main/solutions.json";
+const REMOTE_SOLUTIONS_URL_ALT = "https://raw.githubusercontent.com/JyRaGa/NPTELWhisperer/refs/heads/main/solutions.js";
 
-    if (!solutions) {
-        console.warn("[NPTEL Whisperer] window.nptelSolutions is not defined.");
+// Fetch the latest solutions JSON from remote GitHub repo with local storage fallback
+async function fetchLatestSolutions() {
+    console.log("[NPTEL Whisperer] Checking for latest solutions from GitHub repository...");
+    try {
+        const response = await fetch(REMOTE_SOLUTIONS_URL, { cache: 'no-cache' });
+        if (response.ok) {
+            const data = await response.json();
+            if (data && (data.programming || data.mcq)) {
+                await chrome.storage.local.set({ latestNptelData: data });
+                console.log("[NPTEL Whisperer] Successfully fetched and cached latest solutions from GitHub.");
+                return data;
+            }
+        } else {
+            console.warn(`[NPTEL Whisperer] Primary JSON endpoint returned status ${response.status}. Attempting fallback endpoint...`);
+            const altResponse = await fetch(REMOTE_SOLUTIONS_URL_ALT, { cache: 'no-cache' });
+            if (altResponse.ok) {
+                const text = await altResponse.text();
+                try {
+                    const data = JSON.parse(text);
+                    await chrome.storage.local.set({ latestNptelData: data });
+                    console.log("[NPTEL Whisperer] Successfully fetched and cached latest solutions from alternative endpoint.");
+                    return data;
+                } catch (e) {
+                    console.warn("[NPTEL Whisperer] Could not parse alternative response as JSON.");
+                }
+            }
+        }
+    } catch (err) {
+        console.warn("[NPTEL Whisperer] Remote fetch failed or user is offline:", err.message);
+    }
+
+    // Fallback to locally cached data
+    console.log("[NPTEL Whisperer] Attempting to load solutions from local cache...");
+    try {
+        const cached = await new Promise((resolve) => {
+            chrome.storage.local.get(['latestNptelData'], resolve);
+        });
+        if (cached && cached.latestNptelData) {
+            console.log("[NPTEL Whisperer] Loaded cached solutions from chrome.storage.local.");
+            return cached.latestNptelData;
+        }
+    } catch (err) {
+        console.warn("[NPTEL Whisperer] Error retrieving cached solutions:", err);
+    }
+
+    console.warn("[NPTEL Whisperer] No remote or cached solutions available.");
+    return null;
+}
+
+// Function to find the correct Python code based on the current page URL
+function getProgrammingSolutionForCurrentPage(nptelData) {
+    const currentURL = window.location.href;
+    const programming = nptelData?.programming;
+
+    if (!programming) {
         return null;
     }
 
     // Loop through weeks (week1..week12) and assignment URL fragments
-    for (const week in solutions) {
-        if (Object.prototype.hasOwnProperty.call(solutions, week)) {
-            const weekSolutions = solutions[week];
+    for (const week in programming) {
+        if (Object.prototype.hasOwnProperty.call(programming, week)) {
+            const weekSolutions = programming[week];
             for (const urlFragment in weekSolutions) {
                 if (Object.prototype.hasOwnProperty.call(weekSolutions, urlFragment)) {
                     if (urlFragment && currentURL.includes(urlFragment)) {
@@ -31,12 +82,11 @@ function getProgrammingSolutionForCurrentPage() {
 }
 
 // Function to find the correct MCQ/MSQ answers based on the current page URL
-function getMCQSolutionForCurrentPage() {
+function getMCQSolutionForCurrentPage(nptelData) {
     const currentURL = window.location.href;
-    const mcqSolutions = window.nptelMCQSolutions || (typeof nptelMCQSolutions !== 'undefined' ? nptelMCQSolutions : null);
+    const mcqSolutions = nptelData?.mcq;
 
     if (!mcqSolutions) {
-        console.warn("[NPTEL Whisperer] window.nptelMCQSolutions is not defined.");
         return null;
     }
 
@@ -495,7 +545,7 @@ function injectProgrammingSolution(pythonCodeToInject, autoSubmitEnabled) {
 let lastHandledUrl = '';
 let activeInjectionTimeout = null;
 
-function runInjector() {
+async function runInjector() {
     const currentURL = window.location.href;
     if (currentURL === lastHandledUrl) {
         return;
@@ -510,15 +560,23 @@ function runInjector() {
         activeInjectionTimeout = null;
     }
 
+    // 1. Fetch latest solutions or fallback to local cache
+    const nptelData = await fetchLatestSolutions();
+
     chrome.storage.local.get(['autoSubmit'], (result) => {
         const autoSubmitEnabled = Boolean(result.autoSubmit);
         console.log("[NPTEL Whisperer] Auto-submit preference:", autoSubmitEnabled);
         console.log("[NPTEL Whisperer] Checking current URL against database mappings...");
 
+        if (!nptelData) {
+            console.warn("[NPTEL Whisperer] No solutions data available to check against.");
+            return;
+        }
+
         // Check for programming assignment match
-        const pythonCode = getProgrammingSolutionForCurrentPage();
+        const pythonCode = getProgrammingSolutionForCurrentPage(nptelData);
         // Check for MCQ assessment match
-        const mcqData = getMCQSolutionForCurrentPage();
+        const mcqData = getMCQSolutionForCurrentPage(nptelData);
 
         if (pythonCode) {
             console.log("[NPTEL Whisperer] Mode: Programming Assignment detected.");

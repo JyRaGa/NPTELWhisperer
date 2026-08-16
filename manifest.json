@@ -1,10 +1,13 @@
 {
   "manifest_version": 3,
   "name": "NPTEL Whisperer",
-  "version": "1.4.1",
+  "version": "1.5.0",
   "description": "Modular auto-injector for NPTEL course programming assignments and MCQ assessments.",
   "permissions": [
     "storage"
+  ],
+  "host_permissions": [
+    "https://raw.githubusercontent.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -16,7 +19,6 @@
         "*://onlinecourses.nptel.ac.in/*"
       ],
       "js": [
-        "solutions.js",
         "content.js"
       ]
     }

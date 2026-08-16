@@ -59,44 +59,54 @@
 ```
 nptel-whisperer/
 ├── manifest.json       # Chrome Manifest V3 configuration
-├── content.js          # Main content script (injection & verification engine)
-├── solutions.js        # Solution mappings for programming & MCQ assignments
+├── content.js          # Main content script (cloud fetch, verification & injection engine)
+├── solutions.json      # Dynamic database for programming solutions and MCQ answer keys
 ├── popup.html          # Extension popup UI
 ├── popup.js            # Popup settings handler (Auto-Submit toggle)
+├── LICENSE             # GNU General Public License v3.0
 └── README.md           # Project documentation
 ```
 
 ---
 
-## ⚙️ Adding New Solutions
+## ⚙️ Updating Solutions (`solutions.json`)
 
-To add solutions for upcoming weeks or additional courses, simply update `solutions.js`:
+The extension dynamically synchronizes with `solutions.json` from the repository on each navigation, falling back to local `chrome.storage` if offline.
+
+To publish new solutions, simply edit `solutions.json` in your repository:
 
 ### 1. Programming Assignments
-Add the assignment URL parameter fragment and the target Python code to `window.nptelSolutions`:
-```javascript
-window.nptelSolutions.week6 = {
-    "progassignmentId=690": `def solve():\n    # Your solution here\n    pass`,
-    "progassignmentId=691": `def solve_two():\n    pass`
-};
+Add the assignment URL parameter fragment and the target Python code under `"programming"`:
+```json
+{
+  "programming": {
+    "week6": {
+      "progassignmentId=690": "def solve():\n    # Your solution here\n    pass"
+    }
+  }
+}
 ```
 
 ### 2. MCQ / MSQ Assessments
-Add the assessment URL fragment and question answers to `window.nptelMCQSolutions`:
-```javascript
-window.nptelMCQSolutions["assessmentId=695"] = {
-    Q1: "Option text for Q1",
-    Q2: ["MSQ Option 1", "MSQ Option 2", "MSQ Option 3"], // Multiple choice array
-    Q3: "42"
-};
+Add the assessment URL fragment and question answers under `"mcq"`:
+```json
+{
+  "mcq": {
+    "assessmentId=695": {
+      "Q1": "Option text for Q1",
+      "Q2": ["MSQ Option 1", "MSQ Option 2", "MSQ Option 3"],
+      "Q3": "42"
+    }
+  }
+}
 ```
 
 ---
 
 ## 🛡️ Content Security & Privacy
 
-- **Zero External Requests**: All solutions and scripts are bundled locally within the extension. No user data, session cookies, or telemetry are ever sent to remote servers.
-- **Local Storage Only**: Uses Chrome's `storage.local` exclusively to persist your personal auto-submit preferences.
+- **Safe Read-Only Cloud Sync**: The extension only fetches open assignment solutions from the public GitHub repository. No user data, session cookies, passwords, or personal telemetry are ever collected or transmitted.
+- **Local Storage Only**: Uses Chrome's `storage.local` exclusively to cache the latest solutions and persist your personal auto-submit preferences.
 
 ---
 
