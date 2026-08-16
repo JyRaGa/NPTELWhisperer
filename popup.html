@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>NPTEL Whisperer</title>
+  <style>
+    /* Minimalist document-style UI */
+    body { 
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+      width: 220px; 
+      padding: 16px; 
+      margin: 0;
+      background-color: #ffffff;
+      color: #333333;
+    }
+    
+    h3 {
+      font-size: 13px;
+      font-weight: 600;
+      margin-top: 0;
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e0e0e0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .setting { 
+      display: flex; 
+      align-items: center; 
+      justify-content: space-between; 
+      font-size: 13px;
+    }
+    
+    label {
+      cursor: pointer;
+      user-select: none;
+    }
+    
+    input[type="checkbox"] {
+      accent-color: #333333;
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <h3>NPTEL Whisperer</h3>
+  <div class="setting">
+    <label for="autoSubmit">Auto-Submit</label>
+    <input type="checkbox" id="autoSubmit">
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
