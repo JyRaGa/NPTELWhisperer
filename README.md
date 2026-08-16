@@ -40,9 +40,9 @@
 
 1. **Clone or Download** this repository:
    ```bash
-   git clone https://github.com/your-username/nptel-whisperer.git
+   git clone https://github.com/JyRaGa/NPTELWhisperer.git
    ```
-   *(Or download and extract the ZIP file).*
+   *(Or download and extract the ZIP file from the latest [Release](https://github.com/JyRaGa/NPTELWhisperer/releases/latest ).*
 
 2. **Open Extensions Manager** in your Chromium-based browser (Chrome, Brave, Edge):
    - Navigate to `chrome://extensions/`
