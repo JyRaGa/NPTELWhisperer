@@ -6,6 +6,9 @@
 
 **NPTEL Whisperer** is a lightweight, modular browser extension designed for NPTEL / Swayam course participants. It automatically detects programming assignments and multiple-choice / multiple-select assessments (MCQ & MSQ), injects verified solutions, and handles verification and compilation with zero user friction.
 
+> [!NOTE]
+> Currently configured for demonstration purposes specifically for the NPTEL course **"The Joy of Computing using Python"**.
+
 ---
 
 ## ✨ Features
