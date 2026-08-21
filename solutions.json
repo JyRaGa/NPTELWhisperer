@@ -14,7 +14,11 @@
       "progassignmentId=684": "arr = [int(x) for x in input().split()]\nseen = set()\nadded = set()\nresult = []\nfor num in arr:\n    if num in seen:\n        if num not in added:\n            result.append(num)\n            added.add(num)\n    else:\n        seen.add(num)\nif not result:\n    print(-1, end='')\nelse:\n    print(*result, end='')",
       "progassignmentId=685": "arr = [int(x) for x in input().split()]\nfreq = {}\nfor num in arr:\n    freq[num] = freq.get(num, 0) + 1\nexactly_two = [num for num, count in freq.items() if count == 2]\nexactly_two.sort()\nif not exactly_two:\n    print(-1, end='')\nelse:\n    print(*exactly_two, end='')"
     },
-    "week6": {},
+    "week6": {
+      "progassignmentId=687": "def count_alpha(s):\n    if not s:\n        return 0\n    return (1 if s[0].isalpha() else 0) + count_alpha(s[1:])\n\ns = input()\nprint(count_alpha(s), end='')",
+      "progassignmentId=688": "def count_boxes(lst):\n    if not lst:\n        return 0\n    return 1 + count_boxes(lst[1:])\n\nboxes = input().split()\nprint(count_boxes(boxes), end='')",
+      "progassignmentId=689": "def find_max(temps):\n    if len(temps) == 1:\n        return temps[0]\n    rest_max = find_max(temps[1:])\n    return temps[0] if temps[0] > rest_max else rest_max\n\ntemps = list(map(int, input().split()))\nprint(find_max(temps), end='')"
+    },
     "week7": {},
     "week8": {},
     "week9": {},
@@ -93,6 +97,43 @@
         "Binary Search requires the list to be sorted.",
         "Linear Search can be used on both sorted and unsorted lists.",
         "Both Linear Search and Binary Search will locate Gate 126 in this scenario."
+      ]
+    },
+    "assessmentId=686": {
+      "Q1": "Line 8",
+      "Q2": "Lines 17–18",
+      "Q3": "It initializes an empty string to build the encrypted message.",
+      "Q4": "The output will be identical to the input.",
+      "Q5": [
+        "Line 5 stores all lowercase and uppercase English letters.",
+        "Line 8 creates a substitution mapping using a dictionary.",
+        "Lines 20 and 21 display both the original and encrypted messages."
+      ],
+      "Q6": "Line 10",
+      "Q7": "It exits the loop after finding a winner.",
+      "Q8": "winner",
+      "Q9": "\"Player\"",
+      "Q10": [
+        "The board is represented using a nested list.",
+        "The program checks only row-wise winning conditions.",
+        "The loop stops immediately after a winner is found."
+      ],
+      "Q11": "The same search procedure is applied repeatedly to each subfolder.",
+      "Q12": "A folder has no more files or subfolders to search, or the required file is found.",
+      "Q13": "The same search operation must be repeated for each subfolder.",
+      "Q14": "The search could continue indefinitely or until system resources are exhausted.",
+      "Q15": [
+        "The same search procedure is used for every subfolder.",
+        "The search must have a stopping condition.",
+        "Each subfolder represents a smaller instance of the original problem."
+      ],
+      "Q16": "Line 2",
+      "Q17": "Line 11",
+      "Q18": "It calculates the middle index of the current search range.",
+      "Q19": "The search continues without reducing the search range, leading to infinite recursion.",
+      "Q20": [
+        "The recursive calls in Lines 11 and 14 reduce the search space in every recursive step.",
+        "The recursion stops either when the target is found (Line 8) or when the search range becomes invalid (Line 2)."
       ]
     }
   }
