@@ -89,7 +89,7 @@
         "Binary Search repeatedly divides the search space into two halves.",
         "Both Linear Search and Binary Search return index 4 for the given input."
       ],
-      "Q16": "6",
+      "Q16": "7",
       "Q17": "117",
       "Q18": "[121, 126, 130, 135, 140]",
       "Q19": "It eliminates half of the remaining search space after each comparison.",
