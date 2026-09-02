@@ -92,47 +92,160 @@ function getPageContextText() {
     return texts.join(' ').toLowerCase();
 }
 
-// Detect week number from URL and page context
-function detectWeekNumber() {
-    const url = window.location.href.toLowerCase();
-    const context = getPageContextText();
+// Fast lookup map for known assessment and programming assignment IDs across weeks
+const KNOWN_ASSESSMENT_MAP = {
+    // Week 4
+    '675': { type: 'mcq', week: 4 },
+    '676': { type: 'programming', week: 4, index: 0 },
+    '677': { type: 'programming', week: 4, index: 1 },
+    '678': { type: 'programming', week: 4, index: 2 },
+    '679': { type: 'programming', week: 4, index: 3 },
+    // Week 5
+    '682': { type: 'mcq', week: 5 },
+    '683': { type: 'programming', week: 5, index: 0 },
+    '684': { type: 'programming', week: 5, index: 1 },
+    '685': { type: 'programming', week: 5, index: 2 },
+    // Week 6
+    '686': { type: 'mcq', week: 6 },
+    '687': { type: 'programming', week: 6, index: 0 },
+    '688': { type: 'programming', week: 6, index: 1 },
+    '689': { type: 'programming', week: 6, index: 2 },
+    // Week 7
+    '692': { type: 'programming', week: 7, index: 0 },
+    '693': { type: 'programming', week: 7, index: 1 },
+    '694': { type: 'programming', week: 7, index: 2 },
+    '695': { type: 'mcq', week: 7 }
+};
 
-    // Check URL (e.g. week4, week-4, unit=4, unit=28)
-    const urlWeekMatch = url.match(/week[-_]?0?(\d+)/i) || url.match(/[?&]unit=0?(\d+)/i);
+// Extract all query parameters and hash parameters from current URL into a lowercase dictionary
+function getNormalizedUrlParams(urlStr = window.location.href) {
+    const params = {};
+    try {
+        const parsed = new URL(urlStr);
+        parsed.searchParams.forEach((val, key) => {
+            params[key.toLowerCase()] = val.toLowerCase().trim();
+        });
+        if (parsed.hash && parsed.hash.includes('?')) {
+            const hashSearch = parsed.hash.split('?')[1];
+            const hashParams = new URLSearchParams(hashSearch);
+            hashParams.forEach((val, key) => {
+                params[key.toLowerCase()] = val.toLowerCase().trim();
+            });
+        }
+    } catch (e) {
+        const matches = urlStr.matchAll(/[?&#]([a-zA-Z0-9_-]+)=([^&#\s]*)/g);
+        for (const m of matches) {
+            params[m[1].toLowerCase()] = decodeURIComponent(m[2]).toLowerCase().trim();
+        }
+    }
+    return params;
+}
+
+// Detect week number from URL, known IDs, and page context with hierarchical priority
+function detectWeekNumber() {
+    const url = window.location.href;
+    const urlLower = url.toLowerCase();
+    const params = getNormalizedUrlParams(url);
+
+    // 1. Direct check from known ID in URL params
+    const activeId = params.assessmentid || params.progassignmentid || params.assessment || params.progassignment || params.id;
+    if (activeId && KNOWN_ASSESSMENT_MAP[activeId]) {
+        return KNOWN_ASSESSMENT_MAP[activeId].week;
+    }
+
+    // 2. Check URL query parameters or path for explicit week
+    if (params.week) {
+        const w = parseInt(params.week, 10);
+        if (w >= 1 && w <= 12) return w;
+    }
+    const urlWeekMatch = urlLower.match(/(?:week|w)[-_]?0?(\d+)/i);
     if (urlWeekMatch) {
         const num = parseInt(urlWeekMatch[1], 10);
         if (num >= 1 && num <= 12) return num;
     }
 
-    // Check context (e.g. "Week 4", "Assignment 4", "Unit 4")
-    const contextMatch = context.match(/week\s*0?(\d+)/i) || 
-                         context.match(/assignment\s*0?(\d+)/i) || 
-                         context.match(/unit\s*0?(\d+)/i);
-    if (contextMatch) {
-        const num = parseInt(contextMatch[1], 10);
+    // 3. Check active sidebar unit, breadcrumbs, and selected navigation elements
+    const highPrioritySelectors = [
+        '.breadcrumb',
+        '.unit-title',
+        '.active',
+        '.selected',
+        '.gcb-nav-active',
+        '.nav-item.active',
+        '[aria-current="page"]',
+        '.sidebar .selected',
+        '.sidebar .active',
+        '.gcb-lesson-title',
+        'h1', 'h2', 'h3'
+    ];
+    for (const sel of highPrioritySelectors) {
+        const els = Array.from(document.querySelectorAll(sel));
+        for (const el of els) {
+            const txt = (el.innerText || el.textContent || '').trim().toLowerCase();
+            const m = txt.match(/\bweek\s*0?(\d+)\b/i) || txt.match(/\bunit\s*0?(\d+)\b/i);
+            if (m) {
+                const num = parseInt(m[1], 10);
+                if (num >= 1 && num <= 12) return num;
+            }
+        }
+    }
+
+    // 4. Broader page context matching
+    const context = getPageContextText();
+    const weekMatch = context.match(/\bweek\s*0?(\d+)\b/i);
+    if (weekMatch) {
+        const num = parseInt(weekMatch[1], 10);
+        if (num >= 1 && num <= 12) return num;
+    }
+
+    // 5. Look for non-programming "Assignment X" in context
+    const assignmentMatch = context.match(/\bassignment\s*[-_:]?\s*0?(\d+)\b/i);
+    if (assignmentMatch && !context.includes(`programming assignment ${assignmentMatch[1]}`)) {
+        const num = parseInt(assignmentMatch[1], 10);
         if (num >= 1 && num <= 12) return num;
     }
 
     return null;
 }
 
-// Function to find the correct Python code based on the current page URL & DOM heuristics
+// Function to find the correct Python code based on current page URL, parameters & DOM heuristics
 function getProgrammingSolutionForCurrentPage(nptelData) {
     const currentURL = window.location.href;
+    const currentUrlLower = currentURL.toLowerCase();
+    const params = getNormalizedUrlParams(currentURL);
     const programming = nptelData?.programming;
 
     if (!programming) {
         return null;
     }
 
-    // 1. Direct URL fragment match
+    // Exclude explicit MCQ page when no code editor is present
+    const isExplicitAssessmentPage = (params.assessmentid || currentUrlLower.includes('assessmentid') || currentUrlLower.includes('assessment=')) &&
+        !document.querySelector('textarea.inputarea, .ace_editor, .monaco-editor, #editor, textarea');
+    const hasQuestions = document.querySelectorAll('input[type="radio"], input[type="checkbox"], .gcb-question').length >= 3;
+    const hasCodeEditor = Boolean(document.querySelector('textarea.inputarea, .ace_editor, .monaco-editor, #editor, textarea'));
+
+    if (isExplicitAssessmentPage || (hasQuestions && !hasCodeEditor)) {
+        return null;
+    }
+
+    const progId = params.progassignmentid || params.progassignment || params.assignmentid || params.id;
+
+    // 1. Direct URL fragment & parameter matching
     for (const week in programming) {
         if (Object.prototype.hasOwnProperty.call(programming, week)) {
             const weekSolutions = programming[week];
             for (const urlFragment in weekSolutions) {
                 if (Object.prototype.hasOwnProperty.call(weekSolutions, urlFragment)) {
-                    if (urlFragment && currentURL.includes(urlFragment)) {
+                    const fragLower = urlFragment.toLowerCase();
+                    // Case-insensitive direct URL match
+                    if (currentUrlLower.includes(fragLower)) {
                         console.log(`[NPTEL Whisperer] Matched programming assignment URL fragment: "${urlFragment}" (in ${week})`);
+                        return weekSolutions[urlFragment];
+                    }
+                    // Parameter ID match (e.g. progassignmentId=692 matches param 692)
+                    if (progId && fragLower.includes(progId)) {
+                        console.log(`[NPTEL Whisperer] Matched programming assignment param ID "${progId}" -> "${urlFragment}" (in ${week})`);
                         return weekSolutions[urlFragment];
                     }
                 }
@@ -140,15 +253,21 @@ function getProgrammingSolutionForCurrentPage(nptelData) {
         }
     }
 
-    // 2. Smart Fallback: Match based on Week + Problem Number / Keywords in DOM
-    const isExplicitAssessmentPage = currentURL.includes('assessmentId') || currentURL.includes('assessment=');
-    const hasCodeEditor = Boolean(document.querySelector('textarea.inputarea, .ace_editor, .monaco-editor, #editor, textarea'));
-    const hasQuestions = document.querySelectorAll('input[type="radio"], input[type="checkbox"], .gcb-question').length >= 3;
-
-    if (isExplicitAssessmentPage || (hasQuestions && !hasCodeEditor)) {
-        return null;
+    // 2. Known Assessment ID Map fast-path
+    if (progId && KNOWN_ASSESSMENT_MAP[progId] && KNOWN_ASSESSMENT_MAP[progId].type === 'programming') {
+        const info = KNOWN_ASSESSMENT_MAP[progId];
+        const weekKey = `week${info.week}`;
+        const weekSolutions = programming[weekKey];
+        if (weekSolutions) {
+            const keys = Object.keys(weekSolutions);
+            if (keys[info.index]) {
+                console.log(`[NPTEL Whisperer] Matched programming assignment from known ID map: ${progId} -> ${weekKey}[${info.index}]`);
+                return weekSolutions[keys[info.index]];
+            }
+        }
     }
 
+    // 3. Smart Fallback: Match based on Week + Problem Number / Keywords in DOM
     const weekNum = detectWeekNumber();
     if (weekNum) {
         const weekKey = `week${weekNum}`;
@@ -156,33 +275,55 @@ function getProgrammingSolutionForCurrentPage(nptelData) {
         if (weekSolutions) {
             const solutionKeys = Object.keys(weekSolutions);
             if (solutionKeys.length > 0) {
-                const combinedContext = (window.location.href + ' ' + getPageContextText()).toLowerCase();
+                const combinedContext = (currentUrlLower + ' ' + getPageContextText() + ' ' + (document.body ? document.body.innerText.slice(0, 3000) : '')).toLowerCase();
 
-                // Problem 1 heuristics
-                if (combinedContext.includes('assignment 1') || combinedContext.includes('problem 1') || 
-                    combinedContext.includes('question 1') || combinedContext.includes('prog 1') || 
+                // Detect problem index from context (e.g. "Programming Assignment 1", "Problem 2")
+                const problemIndexMatch = combinedContext.match(/(?:programming\s*assignment|prog\s*assignment|problem|question|prog|pa)\s*0?([1-4])/i) ||
+                    combinedContext.match(/[?&](?:name|p|index|problem)=0?([1-4])/i);
+
+                if (problemIndexMatch) {
+                    const pIdx = parseInt(problemIndexMatch[1], 10) - 1;
+                    if (solutionKeys[pIdx]) {
+                        console.log(`[NPTEL Whisperer] Smart Fallback matched ${weekKey} Problem ${pIdx + 1} from context index`);
+                        return weekSolutions[solutionKeys[pIdx]];
+                    }
+                }
+
+                // Problem 1 heuristics (Week 4, 5, 6, 7 keywords)
+                if (combinedContext.includes('assignment 1') || combinedContext.includes('problem 1') ||
+                    combinedContext.includes('question 1') || combinedContext.includes('prog 1') ||
                     combinedContext.includes('temperature') || combinedContext.includes('frequency') ||
-                    combinedContext.includes('progassignmentid=1') || combinedContext.includes('name=1')) {
+                    combinedContext.includes('attraction') || combinedContext.includes('rating') ||
+                    combinedContext.includes('count_alpha') || combinedContext.includes('progassignmentid=1') ||
+                    combinedContext.includes('name=1')) {
                     console.log(`[NPTEL Whisperer] Smart Fallback matched ${weekKey} Problem 1`);
                     return weekSolutions[solutionKeys[0]];
                 }
 
                 // Problem 2 heuristics
-                if (combinedContext.includes('assignment 2') || combinedContext.includes('problem 2') || 
-                    combinedContext.includes('question 2') || combinedContext.includes('prog 2') || 
+                if (combinedContext.includes('assignment 2') || combinedContext.includes('problem 2') ||
+                    combinedContext.includes('question 2') || combinedContext.includes('prog 2') ||
                     combinedContext.includes('prime') || combinedContext.includes('first duplicate') ||
+                    combinedContext.includes('count_boxes') || combinedContext.includes('landmark') ||
                     combinedContext.includes('progassignmentid=2') || combinedContext.includes('name=2')) {
                     console.log(`[NPTEL Whisperer] Smart Fallback matched ${weekKey} Problem 2`);
                     return weekSolutions[solutionKeys[1] || solutionKeys[0]];
                 }
 
                 // Problem 3 heuristics
-                if (combinedContext.includes('assignment 3') || combinedContext.includes('problem 3') || 
-                    combinedContext.includes('question 3') || combinedContext.includes('prog 3') || 
+                if (combinedContext.includes('assignment 3') || combinedContext.includes('problem 3') ||
+                    combinedContext.includes('question 3') || combinedContext.includes('prog 3') ||
                     combinedContext.includes('product id') || combinedContext.includes('exactly twice') ||
+                    combinedContext.includes('find_max') || combinedContext.includes('second largest') ||
                     combinedContext.includes('progassignmentid=3') || combinedContext.includes('name=3')) {
                     console.log(`[NPTEL Whisperer] Smart Fallback matched ${weekKey} Problem 3`);
                     return weekSolutions[solutionKeys[2] || solutionKeys[0]];
+                }
+
+                // Problem 4 heuristics
+                if (solutionKeys.length > 3 && (combinedContext.includes('assignment 4') || combinedContext.includes('problem 4'))) {
+                    console.log(`[NPTEL Whisperer] Smart Fallback matched ${weekKey} Problem 4`);
+                    return weekSolutions[solutionKeys[3]];
                 }
 
                 // Single solution fallback for that week
@@ -200,29 +341,53 @@ function getProgrammingSolutionForCurrentPage(nptelData) {
 // Function to find the correct MCQ/MSQ answers based on current page URL & DOM heuristics
 function getMCQSolutionForCurrentPage(nptelData) {
     const currentURL = window.location.href;
+    const currentUrlLower = currentURL.toLowerCase();
+    const params = getNormalizedUrlParams(currentURL);
     const mcqSolutions = nptelData?.mcq;
 
     if (!mcqSolutions) {
         return null;
     }
 
-    // 1. Direct URL fragment match
+    const assessmentId = params.assessmentid || params.assessment || params.testid || params.quizid || params.id;
+
+    // 1. Direct URL fragment & parameter matching
     for (const urlFragment in mcqSolutions) {
         if (Object.prototype.hasOwnProperty.call(mcqSolutions, urlFragment)) {
-            if (urlFragment && currentURL.includes(urlFragment)) {
+            const fragLower = urlFragment.toLowerCase();
+            // Direct case-insensitive URL match
+            if (currentUrlLower.includes(fragLower)) {
                 console.log(`[NPTEL Whisperer] Matched MCQ assessment URL fragment: "${urlFragment}"`);
+                return mcqSolutions[urlFragment];
+            }
+            // Parameter ID match (e.g. assessmentId=695 matches param 695)
+            if (assessmentId && fragLower.includes(assessmentId)) {
+                console.log(`[NPTEL Whisperer] Matched MCQ assessment param ID "${assessmentId}" -> "${urlFragment}"`);
                 return mcqSolutions[urlFragment];
             }
         }
     }
 
-    // 2. Smart Fallback via Week Detection
+    // 2. Known Assessment ID Map fast-path
+    if (assessmentId && KNOWN_ASSESSMENT_MAP[assessmentId] && KNOWN_ASSESSMENT_MAP[assessmentId].type === 'mcq') {
+        const info = KNOWN_ASSESSMENT_MAP[assessmentId];
+        const weekNum = info.week;
+        for (const key in mcqSolutions) {
+            if (key.includes(assessmentId) || key.toLowerCase().includes(`week${weekNum}`) || key.toLowerCase().includes(`assessment_${weekNum}`)) {
+                console.log(`[NPTEL Whisperer] Matched MCQ assessment from known ID map: ${assessmentId} -> ${key}`);
+                return mcqSolutions[key];
+            }
+        }
+    }
+
+    // 3. Smart Fallback via Week Detection
     const weekNum = detectWeekNumber();
     if (weekNum) {
         for (const key in mcqSolutions) {
-            if (key.toLowerCase().includes(`week${weekNum}`) || 
-                key.toLowerCase().includes(`week_${weekNum}`) || 
-                key.toLowerCase().includes(`assessment_${weekNum}`)) {
+            const kLower = key.toLowerCase();
+            if (kLower.includes(`week${weekNum}`) ||
+                kLower.includes(`week_${weekNum}`) ||
+                kLower.includes(`assessment_${weekNum}`)) {
                 console.log(`[NPTEL Whisperer] Smart Fallback matched MCQ week key: "${key}"`);
                 return mcqSolutions[key];
             }
@@ -235,9 +400,17 @@ function getMCQSolutionForCurrentPage(nptelData) {
             console.log(`[NPTEL Whisperer] Smart Fallback matched Week 5 MCQ assessmentId=682`);
             return mcqSolutions['assessmentId=682'];
         }
+        if (weekNum === 6 && mcqSolutions['assessmentId=686']) {
+            console.log(`[NPTEL Whisperer] Smart Fallback matched Week 6 MCQ assessmentId=686`);
+            return mcqSolutions['assessmentId=686'];
+        }
+        if (weekNum === 7 && mcqSolutions['assessmentId=695']) {
+            console.log(`[NPTEL Whisperer] Smart Fallback matched Week 7 MCQ assessmentId=695`);
+            return mcqSolutions['assessmentId=695'];
+        }
     }
 
-    // 3. Question Content Fingerprint Matching
+    // 4. Question Content Fingerprint Matching
     const choiceWrappers = Array.from(document.querySelectorAll('label, .gcb-mcq-choice, .qt-choice, .form-check, li, [class*="choice"], [class*="option"]'));
     if (choiceWrappers.length >= 3) {
         const visibleChoiceTexts = choiceWrappers.map(w => cleanText(w.innerText || w.textContent || '')).filter(Boolean);
@@ -381,8 +554,8 @@ function injectMCQSolutions(mcqData, autoSubmitEnabled) {
 
     // Check if page indicates previous submission
     const pageText = (document.body ? document.body.innerText : '') || '';
-    if (pageText.includes("Assignment submitted") || 
-        pageText.includes("Assessment submitted") || 
+    if (pageText.includes("Assignment submitted") ||
+        pageText.includes("Assessment submitted") ||
         pageText.includes("You have submitted this assignment") ||
         pageText.includes("Submission Date:")) {
         console.log("[NPTEL Whisperer] Silently verified: Assessment is already marked submitted. Skipping injection & auto-submit.");
@@ -390,8 +563,8 @@ function injectMCQSolutions(mcqData, autoSubmitEnabled) {
     }
 
     const questionContainers = getQuestionContainers();
-    const qKeys = (typeof mcqData === 'object' && mcqData !== null && !Array.isArray(mcqData)) 
-        ? Object.keys(mcqData) 
+    const qKeys = (typeof mcqData === 'object' && mcqData !== null && !Array.isArray(mcqData))
+        ? Object.keys(mcqData)
         : (Array.isArray(mcqData) ? mcqData.map((_, i) => `Q${i + 1}`) : []);
 
     console.log(`[NPTEL Whisperer] Verifying ${qKeys.length} question(s) across ${questionContainers.length} detected question container(s)...`);
@@ -734,35 +907,57 @@ async function runInjector() {
             return;
         }
 
+        let attempts = 0;
+        const maxAttempts = 6;
+
         const attemptResolveAndInject = () => {
+            attempts++;
             const currentUrlLower = window.location.href.toLowerCase();
-            const isAssessmentUrl = currentUrlLower.includes('assessmentid') || currentUrlLower.includes('assessment=');
-            const isProgrammingUrl = currentUrlLower.includes('progassignmentid') || currentUrlLower.includes('progassignment');
+            const params = getNormalizedUrlParams();
+            const isAssessmentUrl = Boolean(params.assessmentid || currentUrlLower.includes('assessmentid') || currentUrlLower.includes('assessment='));
+            const isProgrammingUrl = Boolean(params.progassignmentid || currentUrlLower.includes('progassignmentid') || currentUrlLower.includes('progassignment'));
 
             // 1. Direct MCQ resolution
             const mcqData = getMCQSolutionForCurrentPage(nptelData);
             // 2. Direct Programming resolution
             const pythonCode = getProgrammingSolutionForCurrentPage(nptelData);
 
+            const hasEditor = Boolean(document.querySelector('textarea.inputarea, .ace_editor, .monaco-editor, #editor, textarea'));
+            const hasQuestions = getQuestionContainers().length > 0 || document.querySelectorAll('input[type="radio"], input[type="checkbox"]').length >= 3;
+
             if (isAssessmentUrl && mcqData) {
+                if (!hasQuestions && attempts < maxAttempts) {
+                    console.log(`[NPTEL Whisperer] MCQ page detected, waiting for questions to render in DOM (attempt ${attempts}/${maxAttempts})...`);
+                    activeInjectionTimeout = setTimeout(attemptResolveAndInject, 800);
+                    return;
+                }
                 console.log("[NPTEL Whisperer] Mode: MCQ/MSQ Assessment detected.");
                 injectMCQSolutions(mcqData, autoSubmitEnabled);
             } else if (isProgrammingUrl && pythonCode) {
+                if (!hasEditor && attempts < maxAttempts) {
+                    console.log(`[NPTEL Whisperer] Programming page detected, waiting for code editor to render in DOM (attempt ${attempts}/${maxAttempts})...`);
+                    activeInjectionTimeout = setTimeout(attemptResolveAndInject, 800);
+                    return;
+                }
                 console.log("[NPTEL Whisperer] Mode: Programming Assignment detected.");
                 injectProgrammingSolution(pythonCode, autoSubmitEnabled);
-            } else if (mcqData) {
-                console.log("[NPTEL Whisperer] Mode: MCQ/MSQ Assessment detected.");
+            } else if (mcqData && hasQuestions) {
+                console.log("[NPTEL Whisperer] Mode: MCQ/MSQ Assessment detected via heuristic.");
                 injectMCQSolutions(mcqData, autoSubmitEnabled);
-            } else if (pythonCode) {
-                console.log("[NPTEL Whisperer] Mode: Programming Assignment detected.");
+            } else if (pythonCode && hasEditor) {
+                console.log("[NPTEL Whisperer] Mode: Programming Assignment detected via heuristic.");
                 injectProgrammingSolution(pythonCode, autoSubmitEnabled);
+            } else if ((isAssessmentUrl || isProgrammingUrl) && attempts < maxAttempts) {
+                console.log(`[NPTEL Whisperer] Assignment URL recognized, waiting for page components (attempt ${attempts}/${maxAttempts})...`);
+                activeInjectionTimeout = setTimeout(attemptResolveAndInject, 800);
+                return;
             } else {
-                console.log("[NPTEL Whisperer] No programming or MCQ solution mapped for this URL/page:", currentURL);
+                console.log("[NPTEL Whisperer] No programming or MCQ solution mapped for this URL/page:", window.location.href);
             }
         };
 
-        // Allow SPA DOM 2000ms to mount and render before detecting and injecting
-        activeInjectionTimeout = setTimeout(attemptResolveAndInject, 2000);
+        // Allow SPA DOM a brief initial moment to mount
+        activeInjectionTimeout = setTimeout(attemptResolveAndInject, 1000);
     });
 }
 
