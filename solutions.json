@@ -19,7 +19,11 @@
       "progassignmentId=688": "def count_boxes(lst):\n    if not lst:\n        return 0\n    return 1 + count_boxes(lst[1:])\n\nboxes = input().split()\nprint(count_boxes(boxes), end='')",
       "progassignmentId=689": "def find_max(temps):\n    if len(temps) == 1:\n        return temps[0]\n    rest_max = find_max(temps[1:])\n    return temps[0] if temps[0] > rest_max else rest_max\n\ntemps = list(map(int, input().split()))\nprint(find_max(temps), end='')"
     },
-    "week7": {},
+    "week7": {
+      "progassignmentId=692": "n = int(input())\nattractions = {}\nfor _ in range(n):\n    line = input().split()\n    name = \" \".join(line[:-1])\n    rating = line[-1]\n    attractions[name] = rating\ntarget = input()\nprint(attractions.get(target, -1), end='')",
+      "progassignmentId=693": "n = int(input())\nlandmarks = input().split()\ntarget = input().strip()\ntry:\n    print(landmarks.index(target), end='')\nexcept ValueError:\n    print(-1, end='')",
+      "progassignmentId=694": "arr = list(map(int, input().split()))\narr.sort()\nprint(arr[-2], end='')"
+    },
     "week8": {},
     "week9": {},
     "week10": {},
@@ -134,6 +138,40 @@
       "Q20": [
         "The recursive calls in Lines 11 and 14 reduce the search space in every recursive step.",
         "The recursion stops either when the target is found (Line 8) or when the search range becomes invalid (Line 2)."
+      ]
+    },
+    "assessmentId=695": {
+      "Q1": "k and l",
+      "Q2": "It moves to the next row after printing the top row.",
+      "Q3": "It prints the last column from top to bottom.",
+      "Q4": "1 2 3 4",
+      "Q5": [
+        "The variables k, l, m, and n define the current boundaries of the unvisited portion of the matrix.",
+        "After each side of the spiral is printed, the corresponding boundary is updated."
+      ],
+      "Q6": "if position + roll <= target:",
+      "Q7": "The player moves to position 7.",
+      "Q8": "It checks whether the player has reached the target position.",
+      "Q9": "break",
+      "Q10": [
+        "A move is ignored if it takes the player beyond position 25.",
+        "Landing on a snake or ladder changes the player's position immediately."
+      ],
+      "Q11": "It creates a Google map centered at the given location.",
+      "Q12": "gmap.marker(lat, lon, title=name)",
+      "Q13": "The restaurant name",
+      "Q14": "It saves the map as an HTML file.",
+      "Q15": [
+        "The markers are added using the latitude and longitude values.",
+        "The program iterates through all restaurants using a for loop."
+      ],
+      "Q16": "Linear Search",
+      "Q17": "To inspect every location by moving from the outer boundary towards the center.",
+      "Q18": "Latitude and Longitude",
+      "Q19": "The move is ignored.",
+      "Q20": [
+        "A dictionary is suitable for storing multiple details about each attraction.",
+        "Spiral traversal is a suitable approach for visiting every location in a matrix."
       ]
     }
   }
