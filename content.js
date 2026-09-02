@@ -4,9 +4,8 @@ console.info("[NPTEL Whisperer] Note: Any 404 or MIME type errors you see below 
 console.log("[NPTEL Whisperer] Script initialized. Current URL:", window.location.href);
 
 const REMOTE_SOLUTIONS_URL = "https://raw.githubusercontent.com/JyRaGa/NPTELWhisperer/refs/heads/main/solutions.json";
-const REMOTE_SOLUTIONS_URL_ALT = "https://raw.githubusercontent.com/JyRaGa/NPTELWhisperer/refs/heads/main/solutions.js";
 
-// Fetch the latest solutions JSON with priority: Bundled local extension solutions.json -> Remote GitHub -> Local cache
+// Fetch the latest solutions JSON with priority: Remote GitHub -> Bundled local extension solutions.json -> Local cache
 async function fetchLatestSolutions() {
     let localBundledData = null;
     try {
@@ -24,10 +23,10 @@ async function fetchLatestSolutions() {
         if (response.ok) {
             const remoteData = await response.json();
             if (remoteData && (remoteData.programming || remoteData.mcq)) {
-                // Merge: local bundled takes priority over remote so new local edits are immediate
+                // Merge: remote takes priority over local bundled solutions
                 const merged = {
-                    programming: { ...(remoteData.programming || {}), ...(localBundledData?.programming || {}) },
-                    mcq: { ...(remoteData.mcq || {}), ...(localBundledData?.mcq || {}) }
+                    programming: { ...(localBundledData?.programming || {}), ...(remoteData.programming || {}) },
+                    mcq: { ...(localBundledData?.mcq || {}), ...(remoteData.mcq || {}) }
                 };
                 await chrome.storage.local.set({ latestNptelData: merged });
                 console.log("[NPTEL Whisperer] Successfully fetched and merged solutions with remote.");
