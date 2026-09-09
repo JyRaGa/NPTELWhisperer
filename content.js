@@ -1,5 +1,68 @@
 // content.js - NPTEL Whisperer Injection Logic
 
+// --- Built-in Diagnostic Logger ---
+const MAX_DIAGNOSTIC_LOGS = 150;
+const diagnosticLogs = [];
+
+function recordDiagnostic(level, args) {
+    const timestamp = new Date().toTimeString().split(' ')[0];
+    const message = Array.from(args).map(arg => {
+        if (arg instanceof Error) return arg.stack || arg.message;
+        if (typeof arg === 'object') {
+            try { return JSON.stringify(arg); } catch { return String(arg); }
+        }
+        return String(arg);
+    }).join(' ');
+
+    diagnosticLogs.push({ time: timestamp, level, message });
+    if (diagnosticLogs.length > MAX_DIAGNOSTIC_LOGS) {
+        diagnosticLogs.shift();
+    }
+
+    try {
+        chrome.storage.local.set({ nptelDiagnosticLogs: diagnosticLogs });
+    } catch (e) {}
+}
+
+const originalConsole = {
+    log: console.log.bind(console),
+    info: console.info.bind(console),
+    warn: console.warn.bind(console),
+    error: console.error.bind(console)
+};
+
+['log', 'info', 'warn', 'error'].forEach(level => {
+    console[level] = function(...args) {
+        originalConsole[level](...args);
+        const text = args.map(a => typeof a === 'string' ? a : '').join(' ');
+        if (text.includes('[NPTEL Whisperer]')) {
+            recordDiagnostic(level, args);
+        }
+    };
+});
+
+// Message listener for Extension Popup to retrieve live diagnostics
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.type === 'GET_DIAGNOSTICS') {
+        const urlParams = new URLSearchParams(window.location.search);
+        sendResponse({
+            url: window.location.href,
+            courseId: urlParams.get('courseId') || window.location.pathname.split('/').pop() || 'N/A',
+            unitId: urlParams.get('unitId') || 'N/A',
+            assessmentId: urlParams.get('assessmentId') || 'N/A',
+            progassignmentId: urlParams.get('progassignmentId') || 'N/A',
+            logs: diagnosticLogs
+        });
+    } else if (request.type === 'CLEAR_DIAGNOSTICS') {
+        diagnosticLogs.length = 0;
+        try {
+            chrome.storage.local.remove(['nptelDiagnosticLogs']);
+        } catch (e) {}
+        sendResponse({ success: true });
+    }
+    return true;
+});
+
 console.info("[NPTEL Whisperer] Note: Any 404 or MIME type errors you see below are native NPTEL website errors failing to load Ace editor themes. The extension will force-inject regardless.");
 console.log("[NPTEL Whisperer] Script initialized. Current URL:", window.location.href);
 
@@ -548,6 +611,208 @@ function isInputChecked(input) {
     );
 }
 
+// Ensure Inter font is loaded on page for Windows & Linux
+function ensureInterFontLoaded() {
+    if (!document.getElementById('nptel-inter-font')) {
+        const link = document.createElement('link');
+        link.id = 'nptel-inter-font';
+        link.rel = 'stylesheet';
+        link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';
+        document.head.appendChild(link);
+    }
+}
+
+// UI Notification for corrected answers
+function showNptelWhispererToast(actionsToPerform, autoSubmitEnabled) {
+    ensureInterFontLoaded();
+    const toastId = 'nptel-whisperer-toast';
+    let existing = document.getElementById(toastId);
+    if (existing) existing.remove();
+    
+    const toast = document.createElement('div');
+    toast.id = toastId;
+    toast.style.cssText = `
+        position: fixed;
+        top: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        color: #1f2937;
+        padding: 16px 24px;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        z-index: 999999;
+        font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        border: 1px solid rgba(229, 231, 235, 0.5);
+        transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        opacity: 0;
+        margin-top: -20px;
+    `;
+    
+    const icon = document.createElement('div');
+    icon.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
+    icon.style.display = 'flex';
+    
+    // Format message
+    const missingKeys = actionsToPerform.filter(a => a.action === 'check' || a.textInput).map(a => a.qKey.replace('Q', ''));
+    const wrongKeys = actionsToPerform.filter(a => a.action === 'uncheck').map(a => a.qKey.replace('Q', ''));
+    
+    let missingText = '';
+    if (missingKeys.length > 0) {
+        missingText = `${missingKeys.length} missing answer${missingKeys.length > 1 ? 's' : ''} (${missingKeys.join(',')})`;
+    }
+    
+    let wrongText = '';
+    if (wrongKeys.length > 0) {
+        wrongText = `${wrongKeys.length} wrong selection${wrongKeys.length > 1 ? 's' : ''} (${wrongKeys.join(',')})`;
+    }
+    
+    const detailsText = [missingText, wrongText].filter(Boolean).join(' and ');
+    
+    const textWrapper = document.createElement('div');
+    textWrapper.style.display = 'flex';
+    textWrapper.style.flexDirection = 'column';
+    textWrapper.style.gap = '4px';
+    
+    const title = document.createElement('div');
+    title.innerHTML = `<strong style="color: #111827;">NPTEL Whisperer:</strong> Found incorrect answers!`;
+    
+    const text = document.createElement('div');
+    text.style.fontSize = '12px';
+    text.style.color = '#4b5563';
+    text.innerHTML = `Found ${detailsText}.`;
+    
+    textWrapper.appendChild(title);
+    textWrapper.appendChild(text);
+    
+    const fixBtn = document.createElement('button');
+    fixBtn.innerHTML = 'Fix Answers';
+    fixBtn.style.cssText = `
+        background-color: #3b82f6;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 13px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        white-space: nowrap;
+    `;
+    fixBtn.onmouseover = () => fixBtn.style.backgroundColor = '#2563eb';
+    fixBtn.onmouseout = () => fixBtn.style.backgroundColor = '#3b82f6';
+    
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '×';
+    closeBtn.style.cssText = `
+        background: none;
+        border: none;
+        color: #9ca3af;
+        font-size: 20px;
+        cursor: pointer;
+        padding: 0;
+        margin-left: 4px;
+        line-height: 1;
+    `;
+    
+    let autoDismissTimer = null;
+
+    const dismissToast = (reason) => {
+        if (autoDismissTimer) {
+            clearTimeout(autoDismissTimer);
+            autoDismissTimer = null;
+        }
+        toast.style.opacity = '0';
+        toast.style.marginTop = '-20px';
+        setTimeout(() => toast.remove(), 300);
+    };
+    
+    closeBtn.onclick = () => {
+        console.log("[NPTEL Whisperer] User dismissed correction prompt. No answers were modified.");
+        dismissToast('user_dismissed');
+    };
+    
+    fixBtn.onclick = () => {
+        if (autoDismissTimer) {
+            clearTimeout(autoDismissTimer);
+            autoDismissTimer = null;
+        }
+        console.log(`[NPTEL Whisperer] User accepted prompt: Fixing ${actionsToPerform.length} incorrect/missing option(s)...`);
+        fixBtn.innerHTML = 'Fixing...';
+        fixBtn.style.backgroundColor = '#10b981';
+        
+        setTimeout(() => {
+            actionsToPerform.forEach(item => {
+                if (item.textInput) {
+                    item.textInput.focus();
+                    item.textInput.value = item.valueToSet;
+                    item.textInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    item.textInput.dispatchEvent(new Event('change', { bubbles: true }));
+                } else if (item.input) {
+                    item.input.focus();
+                    item.input.click();
+                    item.input.dispatchEvent(new Event('change', { bubbles: true }));
+                    item.input.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            });
+            
+            console.log(`[NPTEL Whisperer] Successfully applied corrections to ${actionsToPerform.length} option(s).`);
+
+            if (autoSubmitEnabled) {
+                console.log("[NPTEL Whisperer] Auto-submit enabled: Locating submit button...");
+                setTimeout(() => {
+                    const allButtons = Array.from(document.querySelectorAll('button, input[type="submit"], input[type="button"], .gcb-submit-button, .qt-submit-btn'));
+                    const submitBtn = allButtons.find(b => {
+                        const t = (b.innerText || b.value || b.textContent || '').trim().toLowerCase();
+                        return t.includes('submit answers') || t.includes('submit answer') || t === 'submit';
+                    });
+                    if (submitBtn) {
+                        console.log("[NPTEL Whisperer] Auto-submit: Triggering answer submission.");
+                        submitBtn.click();
+                    } else {
+                        console.warn("[NPTEL Whisperer] Auto-submit: Submit button not found on page.");
+                    }
+                }, 1500);
+            } else {
+                console.log("[NPTEL Whisperer] Auto-submit disabled: Answers updated without submitting.");
+            }
+            
+            icon.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>';
+            title.innerHTML = `<strong style="color: #111827;">Fixed Successfully!</strong>`;
+            text.innerHTML = 'Answers have been updated.';
+            fixBtn.style.display = 'none';
+            
+            setTimeout(() => dismissToast('fixed'), 4000);
+        }, 300);
+    };
+    
+    toast.appendChild(icon);
+    toast.appendChild(textWrapper);
+    toast.appendChild(fixBtn);
+    toast.appendChild(closeBtn);
+    document.body.appendChild(toast);
+    
+    requestAnimationFrame(() => {
+        toast.style.opacity = '1';
+        toast.style.marginTop = '0';
+    });
+    
+    // Auto dismiss after 10 seconds if no action is taken
+    autoDismissTimer = setTimeout(() => {
+        if (document.getElementById(toastId) && fixBtn.style.display !== 'none') {
+            console.log("[NPTEL Whisperer] Correction prompt timed out (auto-dismissed after 10s). No answers were modified.");
+            dismissToast('timeout');
+        }
+    }, 10000);
+}
+
 // Function to handle MCQ/MSQ injection and verification
 function injectMCQSolutions(mcqData, autoSubmitEnabled) {
     console.log("[NPTEL Whisperer] Starting MCQ/MSQ assessment verification...");
@@ -636,45 +901,10 @@ function injectMCQSolutions(mcqData, autoSubmitEnabled) {
         return;
     }
 
-    console.log(`[NPTEL Whisperer] Executing ${actionsToPerform.length} corrective option update(s)...`);
-
-    // Perform needed updates
-    actionsToPerform.forEach(item => {
-        if (item.textInput) {
-            item.textInput.focus();
-            item.textInput.value = item.valueToSet;
-            item.textInput.dispatchEvent(new Event('input', { bubbles: true }));
-            item.textInput.dispatchEvent(new Event('change', { bubbles: true }));
-            console.log(`[NPTEL Whisperer] [✓] Set value for ${item.qKey}: "${item.valueToSet}"`);
-        } else if (item.input) {
-            item.input.focus();
-            item.input.click();
-            item.input.dispatchEvent(new Event('change', { bubbles: true }));
-            item.input.dispatchEvent(new Event('input', { bubbles: true }));
-            console.log(`[NPTEL Whisperer] [✓] ${item.action === 'check' ? 'Selected' : 'Unselected'} for ${item.qKey}: "${item.labelText.trim().slice(0, 40)}..."`);
-        }
-    });
-
-    console.log("[NPTEL Whisperer] MCQ Injection complete.");
-
-    if (autoSubmitEnabled) {
-        console.log("[NPTEL Whisperer] Auto-submit enabled. Searching for 'Submit Answers' button in 1500ms...");
-        setTimeout(() => {
-            const allButtons = Array.from(document.querySelectorAll('button, input[type="submit"], input[type="button"], .gcb-submit-button, .qt-submit-btn'));
-            const submitBtn = allButtons.find(b => {
-                const text = (b.innerText || b.value || b.textContent || '').trim().toLowerCase();
-                return text.includes('submit answers') || text.includes('submit answer') || text === 'submit';
-            });
-
-            if (submitBtn) {
-                console.log("[NPTEL Whisperer] Clicking 'Submit Answers' button...");
-                submitBtn.click();
-                console.log("[NPTEL Whisperer] MCQ Assessment submitted successfully.");
-            } else {
-                console.warn("[NPTEL Whisperer] 'Submit Answers' button not found on MCQ page.");
-            }
-        }, 1500);
-    }
+    console.log(`[NPTEL Whisperer] Found ${actionsToPerform.length} incorrect/missing option(s). Prompting user for permission...`);
+    
+    // Show UI notification and wait for user to click "Fix Answers"
+    showNptelWhispererToast(actionsToPerform, autoSubmitEnabled);
 }
 
 // Helper to retrieve currently rendered code from the editor DOM
