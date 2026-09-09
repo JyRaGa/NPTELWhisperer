@@ -24,7 +24,11 @@
       "progassignmentId=693": "n = int(input())\nlandmarks = input().split()\ntarget = input().strip()\ntry:\n    print(landmarks.index(target), end='')\nexcept ValueError:\n    print(-1, end='')",
       "progassignmentId=694": "arr = list(map(int, input().split()))\narr.sort()\nprint(arr[-2], end='')"
     },
-    "week8": {},
+    "week8": {
+      "progassignmentId=698": "print(sum(map(int, input().split())), end='')",
+      "progassignmentId=699": "score = 0\nfor x in input().split():\n    score += 10 if int(x) == 1 else -2\nprint(score, end='')",
+      "progassignmentId=700": "id1, id2 = input().split()\ndef is_pattern_match(s1, s2):\n    if len(s1) != len(s2):\n        return False\n    return len(set(s1)) == len(set(s2)) == len(set(zip(s1, s2)))\nprint(is_pattern_match(id1, id2), end='')"
+    },
     "week9": {},
     "week10": {},
     "week11": {},
@@ -172,6 +176,37 @@
       "Q20": [
         "A dictionary is suitable for storing multiple details about each attraction.",
         "Spiral traversal is a suitable approach for visiting every location in a matrix."
+      ]
+    },
+    "assessmentId=696": {
+      "Q1": "Department",
+      "Q2": "Because the student details are not expected to change frequently.",
+      "Q3": "4",
+      "Q4": "8.7",
+      "Q5": "Create a new tuple with the updated value.",
+      "Q6": "7",
+      "Q7": "Lines 6 and 7",
+      "Q8": "+₹800",
+      "Q9": "₹100 is deducted from the account.",
+      "Q10": [
+        "The player's account balance is printed after every round.",
+        "The player's account balance can become negative."
+      ],
+      "Q11": "The displayed puzzle will always have exactly five letters.",
+      "Q12": "random.shuffle() arranges the letters in the same order as the original keyword.",
+      "Q13": "A",
+      "Q14": "They stop the loop only after a shuffled word different from the original has been generated.",
+      "Q15": [
+        "If the input contains only one character, the program may run indefinitely.",
+        "The generated puzzle always contains exactly the same characters as the original keyword."
+      ],
+      "Q16": "To create an object that can analyze the sentiment of text.",
+      "Q17": "compound",
+      "Q18": "It creates a new column containing the sentiment label for each review.",
+      "Q19": "It assigns a sentiment label to a single review based on its compound score.",
+      "Q20": [
+        "The reviews are stored in a Pandas DataFrame.",
+        "The sentiment label for each review is generated using the get_sentiment() function."
       ]
     }
   }
