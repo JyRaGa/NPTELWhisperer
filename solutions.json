@@ -30,9 +30,9 @@
       "progassignmentId=700": "id1, id2 = input().split()\ndef is_pattern_match(s1, s2):\n    if len(s1) != len(s2):\n        return False\n    return len(set(s1)) == len(set(s2)) == len(set(zip(s1, s2)))\nprint(is_pattern_match(id1, id2), end='')"
     },
     "week9": {
-      "progassignmentId=706": "n = [int(x) for x in input().split()]\n\nif len(n) == 1:\n    print(n[0])\nelse:\n    print(max(n) - min(n))",
-      "progassignmentId=707": "courses = input().split()\nsearch_course = input().strip()\n\nprint(courses.count(search_course))",
-      "progassignmentId=708": "x = input().split()\nblocked = x.pop()\n\nprint(len(x) - x.count(blocked))"
+      "progassignmentId=706": "n = [int(x) for x in input().split()]\n\nif len(n) == 1:\n    print(n[0], end='')\nelse:\n    print(max(n) - min(n), end='')",
+      "progassignmentId=707": "courses = input().split()\nsearch_course = input().strip()\n\nprint(courses.count(search_course), end='')",
+      "progassignmentId=708": "x = input().split()\nblocked = x.pop()\n\nprint(len(x) - x.count(blocked), end='')"
     },
     "week10": {},
     "week11": {},
