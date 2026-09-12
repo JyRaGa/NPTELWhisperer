@@ -29,7 +29,11 @@
       "progassignmentId=699": "score = 0\nfor x in input().split():\n    score += 10 if int(x) == 1 else -2\nprint(score, end='')",
       "progassignmentId=700": "id1, id2 = input().split()\ndef is_pattern_match(s1, s2):\n    if len(s1) != len(s2):\n        return False\n    return len(set(s1)) == len(set(s2)) == len(set(zip(s1, s2)))\nprint(is_pattern_match(id1, id2), end='')"
     },
-    "week9": {},
+    "week9": {
+      "progassignmentId=706": "n = [int(x) for x in input().split()]\n\nif len(n) == 1:\n    print(n[0])\nelse:\n    print(max(n) - min(n))",
+      "progassignmentId=707": "courses = input().split()\nsearch_course = input().strip()\n\nprint(courses.count(search_course))",
+      "progassignmentId=708": "x = input().split()\nblocked = x.pop()\n\nprint(len(x) - x.count(blocked))"
+    },
     "week10": {},
     "week11": {},
     "week12": {}
@@ -207,6 +211,40 @@
       "Q20": [
         "The reviews are stored in a Pandas DataFrame.",
         "The sentiment label for each review is generated using the get_sentiment() function."
+      ]
+    },
+    "assessmentId=701": {
+      "Q1": "Line 10",
+      "Q2": "Number of unique tokens in the review",
+      "Q3": "Line 11",
+      "Q4": "Lines 16–18",
+      "Q5": [
+        "FreqDist stores each token as a key and its frequency as the corresponding value.",
+        "len(freq) gives the number of distinct tokens present in the text."
+      ],
+      "Q6": "A book",
+      "Q7": "The books are borrowed together and are recommended to each other.",
+      "Q8": "Number of books in the network",
+      "Q9": "To find books directly connected to a given book",
+      "Q10": [
+        "len(G.edges) returns the total number of recommendation links in the graph.",
+        "A graph can be used to model relationships between connected objects."
+      ],
+      "Q11": "A friendship between two users",
+      "Q12": "A path through Bob",
+      "Q13": "It identifies the minimum number of friendship links connecting two users.",
+      "Q14": "A path exists between every pair of users.",
+      "Q15": [
+        "A node represents an individual user in the social network.",
+        "The Six Degrees of Separation concept is based on finding paths between people in a network."
+      ],
+      "Q16": "To retrieve the color value of a specific pixel",
+      "Q17": "To modify the color of a specific pixel",
+      "Q18": "To create a new blank image",
+      "Q19": "To store the processed image as a file",
+      "Q20": [
+        "Image.new() creates a new image with the specified mode and dimensions.",
+        "Changes made using putpixel() are stored in memory until the image is saved."
       ]
     }
   }
