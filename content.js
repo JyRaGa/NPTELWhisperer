@@ -546,7 +546,7 @@ function getMCQSolutionForCurrentPage(nptelData) {
 }
 
 // Match choice text with target answer text
-function matchAnswerText(choiceText, targetAnswer) {
+function matchAnswerText(choiceText, targetAnswer, exactOnly = false) {
     const cleanChoice = cleanText(choiceText);
     const cleanTarget = cleanText(targetAnswer);
     if (!cleanChoice || !cleanTarget) return false;
@@ -557,6 +557,7 @@ function matchAnswerText(choiceText, targetAnswer) {
     // 2. Choice with prefix stripped
     const stripped = cleanChoice.replace(/^(\([a-z0-9]\)|[a-z0-9][\.\)\:\-])\s*/i, '').trim();
     if (stripped === cleanTarget) return true;
+    if (exactOnly) return false;
 
     // 3. Multi-word phrase matching
     if (cleanTarget.includes(' ')) {
@@ -645,20 +646,8 @@ function isInputChecked(input) {
     );
 }
 
-// Ensure Inter font is loaded on page for Windows & Linux
-function ensureInterFontLoaded() {
-    if (!document.getElementById('nptel-inter-font')) {
-        const link = document.createElement('link');
-        link.id = 'nptel-inter-font';
-        link.rel = 'stylesheet';
-        link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';
-        document.head.appendChild(link);
-    }
-}
-
 // UI Notification for corrected answers
 function showNptelWhispererToast(actionsToPerform, autoSubmitEnabled) {
-    ensureInterFontLoaded();
     const toastId = 'nptel-whisperer-toast';
     let existing = document.getElementById(toastId);
     if (existing) existing.remove();
@@ -669,7 +658,7 @@ function showNptelWhispererToast(actionsToPerform, autoSubmitEnabled) {
         position: fixed;
         top: 24px;
         left: 50%;
-        transform: translateX(-50%);
+        transform: translateX(-50%) translateY(-20px);
         background: rgba(255, 255, 255, 0.95);
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
@@ -678,16 +667,15 @@ function showNptelWhispererToast(actionsToPerform, autoSubmitEnabled) {
         border-radius: 12px;
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
         z-index: 999999;
-        font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         font-size: 14px;
         font-weight: 500;
         display: flex;
         align-items: center;
         gap: 16px;
         border: 1px solid rgba(229, 231, 235, 0.5);
-        transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
         opacity: 0;
-        margin-top: -20px;
     `;
     
     const icon = document.createElement('div');
@@ -764,7 +752,7 @@ function showNptelWhispererToast(actionsToPerform, autoSubmitEnabled) {
             autoDismissTimer = null;
         }
         toast.style.opacity = '0';
-        toast.style.marginTop = '-20px';
+        toast.style.transform = 'translateX(-50%) translateY(-20px)';
         setTimeout(() => toast.remove(), 300);
     };
     
@@ -835,7 +823,7 @@ function showNptelWhispererToast(actionsToPerform, autoSubmitEnabled) {
     
     requestAnimationFrame(() => {
         toast.style.opacity = '1';
-        toast.style.marginTop = '0';
+        toast.style.transform = 'translateX(-50%)';
     });
     
     // Auto dismiss after 10 seconds if no action is taken
@@ -897,9 +885,13 @@ function injectMCQSolutions(mcqData, autoSubmitEnabled) {
         let questionHasUnselectedExpected = false;
         let questionHasSelectedUnexpected = false;
 
+        // Answers that exactly match some option must not fuzzy-match others ("Dark" vs "Both Bright and Dark")
+        const labels = Array.from(inputs, getChoiceText);
+        const hasExact = ans => labels.some(l => matchAnswerText(l, ans, true));
+
         inputs.forEach(input => {
             const labelText = getChoiceText(input);
-            const isExpected = expectedAnswers.some(ans => matchAnswerText(labelText, ans));
+            const isExpected = expectedAnswers.some(ans => matchAnswerText(labelText, ans, hasExact(ans)));
             const isChecked = isInputChecked(input);
 
             if (isExpected && !isChecked) {
