@@ -1,3 +1,5 @@
 # Ignore .agent folders and subfolders everywhere
 .agent/
 **/.agent/
+.impeccable/
+**/.impeccable/

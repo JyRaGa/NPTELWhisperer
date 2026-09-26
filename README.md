@@ -18,7 +18,7 @@
   - Automatically inspects page state to verify whether an assignment has already been evaluated or submitted.
   - For MCQs and MSQs (Multiple Select Questions), validates each choice question-by-question:
     - If all answers are already correct, it skips silently without tampering.
-    - If missing answers or wrong selections are detected, it presents a modern, on-page permission prompt styled in **Inter** detailing the exact discrepancies (e.g., *“Found 2 missing answers and 1 wrong selection”*).
+    - If missing answers or wrong selections are detected, it presents a modern, on-page permission prompt styled in **Manrope** detailing the exact discrepancies (e.g., *“Found 2 missing answers and 1 wrong selection”*).
     - Features an explicit **Fix Answers** action button and a **10-second auto-dismiss** timeout if ignored.
 
 - **Built-in In-Extension Diagnostics Console (v2.0)**:
@@ -73,6 +73,7 @@ nptel-whisperer/
 ├── content.js          # Main content script (cloud fetch, verification & injection engine)
 ├── solutions.json      # Dynamic database for programming solutions and MCQ answer keys
 ├── popup.html          # Extension popup UI (Auto-Submit & Diagnostics terminal)
+├── solution pdfs/      # Weekly solution PDFs (source for solutions.json)
 ├── popup.js            # Popup controller (storage sync & real-time log viewer)
 ├── LICENSE             # GNU General Public License v3.0
 └── README.md           # Project documentation

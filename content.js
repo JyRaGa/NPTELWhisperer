@@ -646,8 +646,20 @@ function isInputChecked(input) {
     );
 }
 
+// Ensure Manrope font is loaded on page for Windows & Linux
+function ensureFontLoaded() {
+    if (!document.getElementById('nptel-font')) {
+        const link = document.createElement('link');
+        link.id = 'nptel-font';
+        link.rel = 'stylesheet';
+        link.href = 'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap';
+        document.head.appendChild(link);
+    }
+}
+
 // UI Notification for corrected answers
 function showNptelWhispererToast(actionsToPerform, autoSubmitEnabled) {
+    ensureFontLoaded();
     const toastId = 'nptel-whisperer-toast';
     let existing = document.getElementById(toastId);
     if (existing) existing.remove();
@@ -667,7 +679,7 @@ function showNptelWhispererToast(actionsToPerform, autoSubmitEnabled) {
         border-radius: 12px;
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
         z-index: 999999;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-family: 'Manrope', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         font-size: 14px;
         font-weight: 500;
         display: flex;
