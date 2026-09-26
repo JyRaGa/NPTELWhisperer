@@ -272,7 +272,7 @@
       "Q10": [
         "The while loop continues until only one element remains in the flames list.",
         "Removing Line 14 would change the sequence in which elements are eliminated.",
-        "The value of count is computed only after common letters have been removed from both names."
+        "The value of count is computed only after common letters have been removed from both names"
       ],
       "Q11": "It creates a pixel access object to read individual pixel values.",
       "Q12": "The dimensions of the image in pixels.",
