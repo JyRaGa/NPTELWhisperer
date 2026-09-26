@@ -34,8 +34,16 @@
       "progassignmentId=707": "x = input().lower().split()\nblocked = x.pop()\nprint(len(x) - x.count(blocked), end='')",
       "progassignmentId=708": "n = [int(x) for x in input().split()]\n\nif len(n) == 1:\n    print(n[0], end='')\nelse:\n    print(max(n) - min(n), end='')"
     },
-    "week10": {},
-    "week11": {},
+    "week10": {
+      "progassignmentId=710": "n, k = [int(x) for x in input().split()]\nexplorers = list(range(1, n + 1))\nidx = 0\nwhile len(explorers) > 1:\n    idx = (idx + k - 1) % len(explorers)\n    explorers.pop(idx)\nprint(explorers[0], end='')",
+      "progassignmentId=711": "readings = [int(x) for x in input().split() if 0 <= int(x) <= 255]\n\n# Each group covers 32 values, so integer division by 32 gives the group (0-7)\ngroups = [value // 32 for value in readings]\n\ntotal = sum(groups)\nprint(total, end='')",
+      "progassignmentId=712": "a, b = [list(x) for x in input().split()]\n\n# Remove each common character once from both strings\nfor ch in a[:]:\n    if ch in b:\n        a.remove(ch)\n        b.remove(ch)\n\nprint(len(a) + len(b), end='')"
+    },
+    "week11": {
+      "progassignmentId=714": "search, *reviews = input().split()\nprint(reviews.count(search), end='')",
+      "progassignmentId=715": "from datetime import datetime\nd1, d2 = [datetime.strptime(x, '%Y-%m-%d') for x in input().split()]\nprint(abs((d2 - d1).days), end='')",
+      "progassignmentId=716": "import calendar\nyear, month = [int(x) for x in input().split()]\n# week[6] is Sunday; 0 means that day belongs to another month\nsundays = sum(1 for week in calendar.monthcalendar(year, month) if week[6] != 0)\nprint(sundays, end='')"
+    },
     "week12": {}
   },
   "mcq": {
@@ -245,6 +253,74 @@
       "Q20": [
         "Image.new() creates a new image with the specified mode and dimensions.",
         "Changes made using putpixel() are stored in memory until the image is saved."
+      ]
+    },
+    "assessmentId=702": {
+      "Q1": "Convert names to lowercase and remove spaces.",
+      "Q2": "Total number of remaining letters after removing common letters.",
+      "Q3": "Line 13",
+      "Q4": "To ensure the index always stays within the current size of the list.",
+      "Q5": [
+        "The loop in Lines 11–14 continues until only one letter remains in the flames list.",
+        "The dictionary result maps each FLAMES letter to a relationship.",
+        "list(name1) in Line 3 converts the first name into a list of characters."
+      ],
+      "Q6": "To make the comparison independent of letter case and spaces.",
+      "Q7": "The total number of characters remaining after common letters are removed.",
+      "Q8": "Line 13",
+      "Q9": "The modulo operator (%) converts the value into a valid list index.",
+      "Q10": [
+        "The while loop continues until only one element remains in the flames list.",
+        "Removing Line 14 would change the sequence in which elements are eliminated.",
+        "The value of count is computed only after common letters have been removed from both names."
+      ],
+      "Q11": "It creates a pixel access object to read individual pixel values.",
+      "Q12": "The dimensions of the image in pixels.",
+      "Q13": "The Red, Green, and Blue intensity values of the current pixel.",
+      "Q14": "To compute the average RGB intensity as a whole number.",
+      "Q15": "20,000",
+      "Q16": "Lines 7–8",
+      "Q17": "Tuple",
+      "Q18": "140",
+      "Q19": "Dark",
+      "Q20": [
+        "img.load() allows the program to access individual pixel values.",
+        "The variables bright and dark are used as counters.",
+        "The program processes pixels using their (x, y) coordinates."
+      ]
+    },
+    "assessmentId=703": {
+      "Q1": "calendar.month()",
+      "Q2": "The index representing the weekday",
+      "Q3": "To convert the weekday index into its corresponding weekday name",
+      "Q4": "print(\"Event Day:\", days[weekday])",
+      "Q5": [
+        "The user enters the year, month, and day.",
+        "The calendar is displayed before the weekday is printed."
+      ],
+      "Q6": "To check whether the given year is a leap year",
+      "Q7": "A list containing the weeks of the month",
+      "Q8": "To count only the Mondays that exist in the selected month",
+      "Q9": "monday_count",
+      "Q10": [
+        "calendar.monthcalendar() returns a list of weeks.",
+        "The calendar is displayed before the number of Mondays is printed."
+      ],
+      "Q11": "An integer representing the weekday of the first day of the month",
+      "Q12": "To count Saturdays and Sundays that belong to the selected month",
+      "Q13": "It stores a two-dimensional list where each inner list represents one week.",
+      "Q14": "9",
+      "Q15": [
+        "calendar.weekday(year, month, 1) is used to determine the weekday of the first day of the month.",
+        "The program displays the calendar before counting the weekends."
+      ],
+      "Q16": "The dates that fall on Fridays in the selected month",
+      "Q17": "To ensure the Friday belongs to the selected month",
+      "Q18": "It returns the last element in the fridays list.",
+      "Q19": "31",
+      "Q20": [
+        "The list fridays stores the dates that fall on Fridays.",
+        "The program displays the last Friday only if at least four Fridays are present in the month."
       ]
     }
   }

@@ -177,7 +177,33 @@ const KNOWN_ASSESSMENT_MAP = {
     '692': { type: 'programming', week: 7, index: 0 },
     '693': { type: 'programming', week: 7, index: 1 },
     '694': { type: 'programming', week: 7, index: 2 },
-    '695': { type: 'mcq', week: 7 }
+    '695': { type: 'mcq', week: 7 },
+    // Week 8
+    '696': { type: 'mcq', week: 8 },
+    '698': { type: 'programming', week: 8, index: 0 },
+    '699': { type: 'programming', week: 8, index: 1 },
+    '700': { type: 'programming', week: 8, index: 2 },
+    // Week 9
+    '701': { type: 'mcq', week: 9 },
+    '706': { type: 'programming', week: 9, index: 0 },
+    '707': { type: 'programming', week: 9, index: 1 },
+    '708': { type: 'programming', week: 9, index: 2 },
+    // Week 10
+    '702': { type: 'mcq', week: 10 },
+    '710': { type: 'programming', week: 10, index: 0 },
+    '711': { type: 'programming', week: 10, index: 1 },
+    '712': { type: 'programming', week: 10, index: 2 },
+    // Week 11
+    '703': { type: 'mcq', week: 11 },
+    '714': { type: 'programming', week: 11, index: 0 },
+    '715': { type: 'programming', week: 11, index: 1 },
+    '716': { type: 'programming', week: 11, index: 2 }
+};
+
+// Known Unit IDs mapping to week numbers
+const KNOWN_UNIT_MAP = {
+    '214': 10,
+    '227': 11
 };
 
 // Extract all query parameters and hash parameters from current URL into a lowercase dictionary
@@ -214,6 +240,9 @@ function detectWeekNumber() {
     const activeId = params.assessmentid || params.progassignmentid || params.assessment || params.progassignment || params.id;
     if (activeId && KNOWN_ASSESSMENT_MAP[activeId]) {
         return KNOWN_ASSESSMENT_MAP[activeId].week;
+    }
+    if (params.unitid && KNOWN_UNIT_MAP[params.unitid]) {
+        return KNOWN_UNIT_MAP[params.unitid];
     }
 
     // 2. Check URL query parameters or path for explicit week
@@ -352,10 +381,11 @@ function getProgrammingSolutionForCurrentPage(nptelData) {
                     }
                 }
 
-                // Problem 1 heuristics (Week 4, 5, 6, 7 keywords)
+                // Problem 1 heuristics (Week 4, 5, 6, 7, 8, 9, 10, 11 keywords)
                 if (combinedContext.includes('assignment 1') || combinedContext.includes('problem 1') ||
                     combinedContext.includes('question 1') || combinedContext.includes('prog 1') ||
-                    combinedContext.includes('temperature') || combinedContext.includes('frequency') ||
+                    combinedContext.includes('treasure') || combinedContext.includes('explorers') ||
+                    combinedContext.includes('review') || combinedContext.includes('frequency') ||
                     combinedContext.includes('attraction') || combinedContext.includes('rating') ||
                     combinedContext.includes('count_alpha') || combinedContext.includes('progassignmentid=1') ||
                     combinedContext.includes('name=1')) {
@@ -366,6 +396,8 @@ function getProgrammingSolutionForCurrentPage(nptelData) {
                 // Problem 2 heuristics
                 if (combinedContext.includes('assignment 2') || combinedContext.includes('problem 2') ||
                     combinedContext.includes('question 2') || combinedContext.includes('prog 2') ||
+                    combinedContext.includes('sensor') || combinedContext.includes('readings') ||
+                    combinedContext.includes('hotel') || combinedContext.includes('duration') ||
                     combinedContext.includes('prime') || combinedContext.includes('first duplicate') ||
                     combinedContext.includes('count_boxes') || combinedContext.includes('landmark') ||
                     combinedContext.includes('progassignmentid=2') || combinedContext.includes('name=2')) {
@@ -376,6 +408,8 @@ function getProgrammingSolutionForCurrentPage(nptelData) {
                 // Problem 3 heuristics
                 if (combinedContext.includes('assignment 3') || combinedContext.includes('problem 3') ||
                     combinedContext.includes('question 3') || combinedContext.includes('prog 3') ||
+                    combinedContext.includes('warehouse') || combinedContext.includes('product code') ||
+                    combinedContext.includes('sundays') || combinedContext.includes('calendar') ||
                     combinedContext.includes('product id') || combinedContext.includes('exactly twice') ||
                     combinedContext.includes('find_max') || combinedContext.includes('second largest') ||
                     combinedContext.includes('progassignmentid=3') || combinedContext.includes('name=3')) {
